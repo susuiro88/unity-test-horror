@@ -15,6 +15,9 @@ public class PlayerMovement : MonoBehaviour
     //プレイヤーのCharacterControllerを取得
     public CharacterController controller;
 
+    //1人称の時は移動を許可しない
+    [SerializeField] private CameraSwitch firstPersonMode;//１人称視点かどうかの判別
+
     private Vector3 moveDir;//移動追加の変数
     [SerializeField] private Transform cameraTransform;
 
@@ -46,7 +49,9 @@ public class PlayerMovement : MonoBehaviour
         velocityY += gravity * Time.deltaTime;
         moveDir.y = velocityY;
         gravityAdd.y = velocityY;
-        controller.Move(gravityAdd);
+         controller.Move(gravityAdd);
+        
+        
 
 
 
@@ -60,13 +65,28 @@ public class PlayerMovement : MonoBehaviour
             // その角度を「方向ベクトル」に変換
             moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
 
+            
 
-            // 3. 移動を実行
-            controller.Move(moveDir * currentSpeed * Time.deltaTime);
+            
 
-            // 4. 回転（進む方向 moveDir を向かせる）
+            // 3. 回転（進む方向 moveDir を向かせる）
             Quaternion targetRotation = Quaternion.LookRotation(moveDir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, playerTurnSpeed * Time.deltaTime);
+
+            // 5. 実行
+            if (firstPersonMode.FirstPersonMode)//一人称視点ではない時に移動許可
+            {
+                //移動を0.3倍で実行
+                controller.Move(moveDir * currentSpeed * Time.deltaTime * 0.3f);
+
+            }
+            else
+            {
+                //回転を実行
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, playerTurnSpeed * Time.deltaTime);
+                //移動を実行
+                controller.Move(moveDir * currentSpeed * Time.deltaTime);
+            }
+
 
         }
 

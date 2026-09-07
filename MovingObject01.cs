@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using UnityEditor.XR;
 using UnityEngine;
+using UnityEngine.Rendering;
 public class MovingObject01 : MonoBehaviour
 {
+    //ループするかしないかのBool型
+    public bool Luup;
     //これから進む方向を示す
     public enum MoveDirection
     {
@@ -16,9 +19,54 @@ public class MovingObject01 : MonoBehaviour
     }
 
     //オブジェクトの横幅、長さを宣言
-    
-    [SerializeField] private float widthObject ;
-    [SerializeField] private float lengthObject;
+
+    public float loadWidth;
+    public float lengthObject;
+
+    //直進している時の速度（センサー用）
+    private float straightSpeed;
+
+    public float StraightSpeed
+    {
+        get { return straightSpeed; }
+    }    
+    //直進している時の最大速度（センサー用）
+    private float straightMaxSpeed;
+
+    public float StraightMaxSpeed
+    {
+        get { return straightMaxSpeed; }
+    }
+
+   //カーブ時のスピード（センサー用：現在スピードあるか、ゼロか判断するために使う）
+    public float CourveSpeed
+    {
+        get { return couveSpeed; }
+    }
+    public float LengthObject
+    {
+        get { return lengthObject; }
+    }
+    float angle;
+    public float Angle
+    {
+        get { return angle * Mathf.Rad2Deg; }//ラジアンから度に変える
+    }
+    private bool state = false;
+    public bool State
+    {
+        get { return state; }
+    }
+
+
+
+    /*
+    //センサーのスクリプトに受け渡し用センサーのスクリプトに受け渡し用
+    public float ValueDist
+    {
+        get { return valueDist; }
+    }
+    */
 
     //カーブするスピードを設定
     [SerializeField] private float couveSpeed;
@@ -31,8 +79,8 @@ public class MovingObject01 : MonoBehaviour
     //[SerializeField] private float moingObjectWidth;
 
     //開始位置と終了位置を宣言
-    private Vector3 completePosition = new Vector3(0, 0, 0);
-    private Vector3 firstPosition = new Vector3(0, 0, 0);
+    private Vector3 completePosition = Vector3.zero;
+    private Vector3 firstPosition = Vector3.zero;
 
     //繰り返し指定することができる。
     [System.Serializable]
@@ -118,21 +166,32 @@ public class MovingObject01 : MonoBehaviour
 
     IEnumerator ProcessSteps()
     {
-        for (int i = 0; i < steps.Count;i++)
+        while (true) 
         {
-            //左折、右折あれば、カーブする
-            if (steps[i].moveDirection == MoveDirection.left || steps[i].moveDirection == MoveDirection.right)
-            {
-                yield return StartCoroutine(Couve(steps[i]));
+            for (int i = 0; i < steps.Count; i++)
+            {                   
+                //加速減速の直線運動
+                yield return StartCoroutine(MoveOverTime(steps, i));
+                //左折、右折あれば、カーブする
+                if (steps[i].moveDirection == MoveDirection.left || steps[i].moveDirection == MoveDirection.right)
+                {
+                    yield return StartCoroutine(Couve(steps[i]));
+                }
+
             }
-            //加速減速の直線運動
-            yield return StartCoroutine(MoveOverTime(steps, i));
+            if(Luup == false)
+            {
+                break;
+            }
+
         }
     }
 
     //カーブを行う関数の宣言:引数に今のステップ数
     IEnumerator Couve(MoveStep step)
     {
+        //カーブ始まるとON
+        state = true;
         
          //最初の座標を宣言
         Vector3 startCouvePos = movingObject.transform.position;
@@ -140,16 +199,13 @@ public class MovingObject01 : MonoBehaviour
         //距離 ／ 速さ　→ 車両の長さの半分　／　1フレームに進む距離（速さ）＝　一段階目にかかるフレーム数。そして、Time.deltaTimeをかければ時間になる
         float firstCouveTime = lengthObject / 2 / couveSpeed;
 
-        //道幅を定義。道幅は車両の幅の２倍と想定する。道路の幅がカーブ時半径になる
-        float loadWidth = widthObject * 2;
-
         //カーブする時間　＋　一段階目の時間　を定義
         //時間　＝　距離　／　速さ　→　円周の４分の１　／　速さ　でいいのかな？
         float secondCouveTime = (loadWidth * 2) * 3.14f / 4 / couveSpeed + firstCouveTime;
         //トータルでカーブするのにかかる時間
         float totalCouveTime = secondCouveTime + firstCouveTime;//最初の車両半分進む時間と、最後の車両半分進む時間が等しい場合
         //追加する座標を格納するための変数
-        Vector3 couveDist = new Vector3(0, 0, 0);
+        Vector3 couveDist;
         //カーブの半径の円を定義
         float couveRadius = loadWidth;
 
@@ -219,7 +275,9 @@ public class MovingObject01 : MonoBehaviour
             }
             else if (firstCouveTime <= elapsedCov && elapsedCov <= secondCouveTime)
             {//第二段階：角度を変える。座標を変える
-                //角度を変える。
+
+
+                /* 角度を変える。*/
                 float completeRotation = (elapsedCov - firstCouveTime) / (secondCouveTime - firstCouveTime);//全体のどこまでの割合進んだか
                 completeRotation = Mathf.Clamp01(completeRotation); // 0〜1に制限
 
@@ -235,10 +293,13 @@ public class MovingObject01 : MonoBehaviour
                     newY = Mathf.Lerp(startY, startY - 90f, completeRotation);
                 }
 
-                transform.rotation = Quaternion.Euler(0f, newY, 0f);
-                //座標を変える
+                transform.rotation = Quaternion.Euler(0f, newY, 0f);//角度を代入
+
+
+
+                /*座標を変える*/
                 //カーブにかかる時間から、現在の時間が何分の１なのかを求め、0 ~ 90のうち現在どこまで進んだかを導き出す。
-                float angle = (elapsedCov - firstCouveTime) / (secondCouveTime - firstCouveTime) * 90 * Mathf.Deg2Rad;//現在の時間　／　全体の時間　＊　９０（最大角度）
+                angle = (elapsedCov - firstCouveTime) / (secondCouveTime - firstCouveTime) * 90 * Mathf.Deg2Rad;//現在の時間　／　全体の時間　＊　９０（最大角度）
 
                 //各x座標、y座標を求める。角度はangle、ベクトルの長さはcouveRadius、
 
@@ -280,6 +341,7 @@ public class MovingObject01 : MonoBehaviour
                 
             }
 
+
             yield return null;
         }
     }
@@ -288,7 +350,17 @@ public class MovingObject01 : MonoBehaviour
 
     IEnumerator MoveOverTime(List<MoveStep> steps, int i)//1フレームごとに呼び出される
     {
+
+        //直線始まるとOFF
+        state = false;
+
+
         MoveStep step = steps[i];
+
+  
+
+        //初期位置から移動した距離
+        float valueDist = 0;
 
         //エラー回避：MoveTime　< FirstTime + SecondTime の時、エラーが発生してしまう。
         //加速する時間と、減速する時間の合計が全体移動時間を超えてしまうと、後のVector3.Lerpの第三引数で負の値を入れることになりエラー発生する
@@ -297,6 +369,11 @@ public class MovingObject01 : MonoBehaviour
             step.firstTime = step.MoveTime / 2;
             step.secondTime = step.MoveTime / 2;
         }
+
+
+        /* 直線に走るように、オブジェクトを真っすぐにする。 */
+        float rotationY = Mathf.Round(transform.eulerAngles.y / 10f) * 10f;
+        transform.rotation = Quaternion.Euler(0f, rotationY, 0f);//角度を代入
 
         //加速減速する関数
         Vector3 targetPos = CompletePosition(step,step.distance, false) + movingObject.transform.position;//オブジェクトの最後の位置。step.MoveDirectionからカーブ後の向きに距離を加算したいため、第三引数はTrueに
@@ -323,13 +400,14 @@ public class MovingObject01 : MonoBehaviour
         //移動時間の間、処理をし続けるループ
         float elapsed = 0f;
 
-        //初期位置から移動した距離
-        float valueDist = 0;
-
         //時間から最高速度を求める
         //最高速度
         //float maxSpeed = step.distance * 2 / (step.MoveTime * 2 - step.firstTime - step.secondTime);
         float maxSpeed = (step.distance - ((step.secondTime * nextFirstSpeed) / 2) - ((step.firstTime * completeFirstSpeed) / 2)) / (step.MoveTime - (step.firstTime / 2f) - (step.secondTime / 2f));
+
+        //直進時の最大速度(センサー用）
+        straightMaxSpeed = maxSpeed;
+
 
         //最高速度　＊　時間　/ ２　で加速・減速している間の距離
         float firstDist = (maxSpeed + completeFirstSpeed) * step.firstTime / 2;
@@ -348,19 +426,26 @@ public class MovingObject01 : MonoBehaviour
                 //valueDist = elapsed * elapsed * (maxSpeed / step.firstTime / 2);
                 //valueDist = elapsed * elapsed * (maxSpeed / step.firstTime / 2);
                 valueDist = completeFirstSpeed * elapsed + elapsed * elapsed * ((maxSpeed - completeFirstSpeed) / step.firstTime / 2);
+                //現在速度も求める（センサーで使用する）
+                straightSpeed = completeFirstSpeed + ((maxSpeed - completeFirstSpeed) / step.firstTime) * elapsed;//現在速度を求める。初速度＋速度変化/時間
             }
             else if (step.firstTime <= elapsed && elapsed <= (step.MoveTime - step.secondTime))//等速運動するゾーン
             {
                 valueDist = firstDist + maxSpeed * (elapsed - step.firstTime);
+                straightSpeed = maxSpeed;//現在速度を求める
             }
             else if ((step.MoveTime - step.secondTime) < elapsed)//減速するゾーン
             {
                 float elapsed2 = elapsed - (step.MoveTime - step.secondTime);
                 valueDist = (step.distance - secondDist) + maxSpeed * elapsed2 + (elapsed2 * elapsed2 * ((nextFirstSpeed - maxSpeed) / step.secondTime) / 2);//次のステップ次第で、加速度が変化する。加速度　＝　(最終速度 - 初速度) /(終了時間 - 開始時間)
+                straightSpeed = maxSpeed + (nextFirstSpeed - maxSpeed) / step.secondTime * elapsed2;//現在速度を求める
             }
 
-            //全体の距離から、現地点の進んだ距離の割合から、Vector3の座標を求める。    
-            movingObject.transform.position = Vector3.Lerp(startPos, targetPos, (valueDist / step.distance));
+            
+            //全体の距離から、現地点の進んだ距離の割合から、Vector3の座標を求める。
+            movingObject.transform.position = Vector3.Lerp(startPos, targetPos, valueDist / step.distance);
+
+
 
             yield return null;
         }
