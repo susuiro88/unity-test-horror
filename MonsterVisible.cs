@@ -3,6 +3,7 @@ using UnityEngine;
 public class MonsterVisible : MonoBehaviour
 {
     [SerializeField] private CameraSwitch cameraSwitch;
+    [SerializeField] private MonsterExistence monsterExistence;
     // InspectorからCameraSwitchを指定
     // 今回はPlayerについているCameraSwitchをここに指定する
 
@@ -16,61 +17,32 @@ public class MonsterVisible : MonoBehaviour
     {
         // 子オブジェクトも全部取得
         renderers = GetComponentsInChildren<Renderer>();
-        // このMonsterVisibleが付いているオブジェクトと、
-        // その子オブジェクトに付いているRendererを全部取得する
-        //
-        // 例えば、
-        //
-        // enemy_test
-        // ├─ Body       ← Renderer
-        // ├─ Head       ← Renderer
-        // └─ Arm        ← Renderer
-        //
-        // のような構造なら、Body・Head・ArmのRendererを
-        // まとめてrenderersに保存する
     }
 
 
     private void Update()
     // ゲーム中、毎フレーム繰り返し実行される
     {
-        // 一人称なら表示
-        if (cameraSwitch.FirstPersonMode)
-        // CameraSwitchのFirstPersonModeがtrueか確認する
-        //
-        // true  → 一人称視点
-        // false → 三人称視点
+        // 具現化後は、一人称・三人称のどちらでも敵を表示する
+        if (monsterExistence.IsMaterialized)
         {
             SetVisible(true);
-            // 敵のRendererを表示する
+            return;
         }
-
-        // 三人称なら非表示
-        else
-        // FirstPersonModeがfalseだった場合
-        // つまり三人称視点の場合
-        {
-            SetVisible(false);
-            // 敵のRendererを非表示にする
-        }
+        // 幽霊状態では、一人称視点のときだけ敵を表示する
+        SetVisible(cameraSwitch.FirstPersonMode);
     }
 
 
     private void SetVisible(bool visible)
     // 敵を表示するか非表示にするかを決めるためのメソッド
-    // visibleにはtrueまたはfalseが入る
     {
         foreach (Renderer r in renderers)
         // renderersに保存されているRendererを1つずつ取り出す
         {
             r.enabled = visible;
             // Rendererの表示・非表示を切り替える
-            //
-            // visible = true
-            // → 表示する
-            //
-            // visible = false
-            // → 非表示にする
+
         }
     }
 }
