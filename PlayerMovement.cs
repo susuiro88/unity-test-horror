@@ -23,15 +23,18 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
+        if (GameOptions.Blocked) { if (animator != null) animator.SetFloat("Speed", 0f); return; }
         // 1. 入力を取得（Rawを使うとキビキビ動きます）
         float x = Input.GetAxisRaw("Horizontal");
         float z = Input.GetAxisRaw("Vertical");
+        // Keep gravity active while blocking movement input during door animation.
+        if (DoorInteraction.BlocksPlayerMovement) { x = 0f; z = 0f; }
         float velocityY = 0; //Y軸
 
         //移動モードの切り替え
         float currentSpeed = speed;
 
-        if (Input.GetKey(KeyCode.LeftShift))
+        if (!firstPersonMode.FirstPersonMode && GameOptions.Held(GameOptions.Action.Dash))
         {
             currentSpeed = dashSpeed;
         }

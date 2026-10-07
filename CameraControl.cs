@@ -1,83 +1,23 @@
 using UnityEngine;
 
+// æ—¢å­˜Prefabã®å‚ç…§ã‚’ç¶­æŒã—ã€ã‚«ãƒ¼ã‚½ãƒ«ã‚’ãƒ­ãƒƒã‚¯ã™ã‚‹ã€‚
+// è¦–ç‚¹åˆ‡æ›¿ã¯CameraSwitchã€å›è»¢ã¯æ—¢å­˜ã®Cinemachineæ§‹æˆã«ä»»ã›ã¦äºŒé‡åˆ¶å¾¡ã‚’é˜²ãã€‚
 public class CameraControl : MonoBehaviour
 {
-    /*‚PlÌ‹“_‚ÌƒJƒƒ‰ƒ[ƒN‚ğÀ‘•‚·‚éƒXƒNƒŠƒvƒg*/
+    [SerializeField] private CameraSwitch cameraSwitch;
 
-    //3lÌA‚PlÌ‚ğØ‚è‘Ö‚¦‚éB
-    bool firstPersonMode;
-    public bool FirstPersonMode
+    // æ—¢å­˜ã‚·ãƒ¼ãƒ³ã®ä¿å­˜æ¸ˆã¿è¨­å®šã¨ã®äº’æ›æ€§ã®ãŸã‚æ®‹ã™ã€‚ã‚«ãƒ¡ãƒ©ã®å›è»¢ã«ã¯ä½¿ç”¨ã—ãªã„ã€‚
+    [HideInInspector] public float mouseSensitivity = 200f;
+    [HideInInspector] public GameObject cameraTransform;
+    [HideInInspector] public Vector3 cameraOffset = new Vector3(0f, 5f, -6f);
+
+    public bool FirstPersonMode => cameraSwitch != null && cameraSwitch.FirstPersonMode;
+
+    // ã‚«ãƒ¼ã‚½ãƒ«ã®åˆæœŸåŒ–ã®ã¿è¡Œã„ã€Qã‚­ãƒ¼ã«ã‚ˆã‚‹è§’åº¦ã®ä¸Šæ›¸ãã‚„åˆ¶é™ã¯è¡Œã‚ãªã„ã€‚
+    private void Start()
     {
-        get { return firstPersonMode; }
-    }
-    //ƒvƒŒƒCƒ„[‚ÉƒZƒbƒg‚µ‚ÄAƒ}ƒEƒX‚ÌƒJ[ƒ\ƒ‹‚ÌÀ•W‚©‚çƒJƒƒ‰‚ÆƒvƒŒƒCƒ„[‚ÌŠp“x‚ğ•ÏX‚³‚¹‚éB
-
-    //ƒ}ƒEƒXŠ´“x‚ğ’²ß
-    public float mouseSensitivity = 200f;
-    //ƒJƒƒ‰‚ÌˆÊ’u
-    public GameObject cameraTransform;
-    //OlÌ‚É‚·‚é‚½‚ß‚ÌƒIƒtƒZƒbƒg
-    public Vector3 cameraOffset = new Vector3(0f,5f,-6f);
-    //ƒJƒƒ‰‚ÌŠp“x
-    float mouseX = 0f;
-    float mouseY = 0f;
-
-    float xRotation = 0f;
-    float yRotation = 0f;
-
-
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        //ƒ}ƒEƒX‚ğ’†‰›•”‚ÉŒÅ’è‚·‚é
+        if (cameraSwitch == null) cameraSwitch = GetComponentInParent<CameraSwitch>();
+        if (cameraSwitch == null) cameraSwitch = FindFirstObjectByType<CameraSwitch>();
         Cursor.lockState = CursorLockMode.Locked;
-        //camera‚Ì’†SÀ•W‚ÉcameraOffset‚ğ‰ÁZ‚µA—£‚ê‚½‚Æ‚±‚ë‚©‚çƒvƒŒƒCƒ„[‚ğ‰f‚·
-        Vector3 cameraPosition = cameraTransform.transform.position;
-        cameraPosition = cameraPosition + cameraOffset;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        firstPersonMode = Input.GetKey(KeyCode.Q);
-        if (firstPersonMode)
-        {
-            //ƒ}ƒEƒX‚ÌÀ•W‚ğæ“¾A‰E‚È‚ç³A¶‚È‚ç•‰Aã‚È‚ç³A‰º‚È‚ç•‰
-            mouseX = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
-            mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
-
-            yRotation += mouseX;//‚³‚ç‚É¶‰E‚Ö’Ç‰Á‚³‚¹‚é
-            xRotation -= mouseY;//‚³‚ç‚Éã‰º‚Ö’Ç‰Á‚³‚¹‚éB
-
-            xRotation = Mathf.Clamp(xRotation, -60f, 60f);//XRotation > 60‚È‚ç’l‚Í60‚ğ•Ô‚·BXRotation < -40f‚È‚ç’l‚Í-40‚ğ•Ô‚·B
-            yRotation = Mathf.Clamp(yRotation, -60f, 60f);//XRotation > 60‚È‚ç’l‚Í60‚ğ•Ô‚·BXRotation < -40f‚È‚ç’l‚Í-40‚ğ•Ô‚·B
-
-            cameraTransform.transform.localRotation = Quaternion.Euler(xRotation, yRotation, 0f);
-
-        }
-        //GetAxis("MouseX")‚Å‰æ–Ê’†‰›‚ğ0‚Æ‚µ‚ÄAƒ}ƒEƒXƒJ[ƒ\ƒ‹‚ÌÀ•W‚ğæ“¾‚·‚éB
-        //mouseSensitivity‚Íƒ}ƒEƒXŠ´“x‚ğ¦‚·B
-        //Time.deltaTime‚ÍƒfƒoƒCƒX‚ÌƒtƒŒ[ƒ€‚²‚Æ‚É‚æ‚Á‚Ä·‚ª‚ ‚é‚½‚ßA“ˆê‚·‚éB‚±‚ê‚ª‚ ‚é‚Æ‚È‚ß‚ç‚©‚É‚È‚é‚ñ‚¶‚á‚È‚¢‚©‚È
-
-
-        //ƒJƒƒ‰‚ÌƒIƒuƒWƒFƒNƒg‚É‘ã“ü‚³‚¹‚é
-
-
-
-        //mouseY‚É‚Â‚¢‚Ä
-        //ƒ}ƒEƒX‚ÌÀ•W‚ğƒJƒƒ‰‚ÌŒX‚«‚É•ÏŠ·
-        //xRotation = mouseX;
-        //yRotation = mouseY;
-        //xRotation = Mathf.Clamp(xRotation, -60f, 60f);//XRotation > 60‚È‚ç’l‚Í60‚ğ•Ô‚·BXRotation < -40f‚È‚ç’l‚Í-40‚ğ•Ô‚·B
-        //yRotation = Mathf.Clamp(yRotation, -60f, 60f);//XRotation > 60‚È‚ç’l‚Í60‚ğ•Ô‚·BXRotation < -40f‚È‚ç’l‚Í-40‚ğ•Ô‚·B
-
-        //ƒJƒƒ‰‚ÌƒIƒuƒWƒFƒNƒg‚ÌÀ•W‚É‘ã“ü‚³‚¹‚éB‚±‚Ìê‡c‚ÉˆÚ“®‚·‚éB
-        //Camera.main.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);//Camera.main‚ÍAmainCamera‚Ìƒ^ƒO‚ª‚Â‚¢‚Ä‚¢‚éƒJƒƒ‰‚ğ‘ÎÛ‚Æ‚·‚éBİ’è‚µ‚È‚¢‚Æ‚¢‚¯‚È‚¢
-
-        //mouseX‚É‚Â‚¢‚Ä
-        //ƒJƒƒ‰‚É’Ç‚µ‚ÄƒvƒŒƒCƒ„[‚ÌƒIƒuƒWƒFƒNƒg‚ğ‰ñ“]‚³‚¹‚éB
-        //playerBody.Rotate(Vector3.up * mouseX);//Vector3.up‚ÍVector(0,1,0j‚Æ“¯‚¶ˆÓ–¡
-
     }
 }

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using System.Collections;
 
+[DefaultExecutionOrder(10002)]
 public class EyeBlink : MonoBehaviour
 {
     public event Action BlinkClosed;
@@ -24,8 +25,26 @@ public class EyeBlink : MonoBehaviour
     }
 
     private bool isBlinking = false;
+    private bool introControlsEyes;
+    public bool CanPlayIntro => eyeClosePanel != null && eyeMaterial != null;
+
+    // 起床演出では怪物へ通知せず、まぶたの見た目だけを共有する。
+    public void SetIntroEyeOpen(float value)
+    {
+        introControlsEyes = true;
+        eyeClosePanel.SetActive(value < 2f);
+        eyeMaterial.SetFloat("_eyeOpen", Mathf.Clamp(value, 0f, 2f));
+    }
+
+    // 起床後は通常の入力へ戻す。
+    public void EndIntro()
+    {
+        SetIntroEyeOpen(2f);
+        introControlsEyes = false;
+    }
     void Start()
     {
+        if (introControlsEyes) return;
         // 最初は非表示
         eyeClosePanel.SetActive(false);
 
@@ -33,10 +52,11 @@ public class EyeBlink : MonoBehaviour
         eyeMaterial.SetFloat("_eyeOpen", 2f);
     }
 
-    void Update()
+    void LateUpdate()
     {
-        // Qを押している間だけ左クリックを受け付ける
-        if (firstPersonMode.FirstPersonMode == true && Input.GetMouseButtonDown(0) && !isBlinking)
+        if (introControlsEyes) return;
+        // Eを押している間だけ左クリックを受け付ける
+        if (firstPersonMode.FirstPersonMode == true && GameOptions.Down(GameOptions.Action.Blink) && !isBlinking && !DoorInteraction.IsDoorBusy && !DoorInteraction.ConsumedClick)
         {
             StartCoroutine(Blink());//まばたきのイベント
         }
@@ -53,15 +73,17 @@ public class EyeBlink : MonoBehaviour
         eyeClosePanel.SetActive(true);
 
         // 2 → 0
-        yield return StartCoroutine(ChangeEyeOpen(2f, 0f, 0.15f));
+        yield return StartCoroutine(ChangeEyeOpen(2f, 0f, 0.25f));
 
         //待つ
         for (int i = 0; i < closedFrames; i++)
         {
+            while (GameOptions.MenuOpen) yield return null;
             yield return null;
         }
 
         // 目を完全に閉じた瞬間を他のスクリプトへ通知
+        while (GameOptions.MenuOpen) yield return null;
         BlinkClosed?.Invoke();
         // 捕捉成功時だけ、追加で長く暗転する
         if (isLongBlink)
@@ -71,7 +93,7 @@ public class EyeBlink : MonoBehaviour
         //ChaseStart?.Invoke();
 
         // 0 → 2
-        yield return StartCoroutine(ChangeEyeOpen(0f, 2f, 0.15f));
+        yield return StartCoroutine(ChangeEyeOpen(0f, 2f, 0.25f));
 
         // 長い暗転だった場合、MonsterExistenceへ追跡開始を通知する
         if (isLongBlink)
